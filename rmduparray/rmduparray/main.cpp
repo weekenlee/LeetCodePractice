@@ -61,12 +61,37 @@ OutIter removedupinarray3(InIter first, InIter last, OutIter ouput)
     return ouput;
 }
 
+
+
+//可以允许有n个重复的
+template <typename T>
+sizetype removedupinarray4(vector<T> &v, int n)
+{
+    if (v.size() < n) {
+        return v.size();
+    }
+    
+    sizetype index = n;
+    
+    for (int i = n; i < v.size();  i++) {
+        if (v[i] != v[index - n]) {
+            v[index++] = v[i];
+        }
+    }
+    
+    return index;
+}
+
+
+
 int main(int argc, const char * argv[]) {
    
     vector<int> vc{1,1,1,2,3,3,4,4,4,4,4,5,5};
     //vector<int>::size_type len = removedupinarray(vc);
     //vector<int>::size_type len = removedupinarray2(vc);
-    vector<int>::size_type len = removedupinarray2(vc);
+    //vector<int>::size_type len = removedupinarray2(vc);
+    vector<int>::size_type len = removedupinarray4(vc,3);
+
     std::for_each(vc.begin(), vc.begin()+len, [](int num){cout << num <<" ";});
     
     return 0;
