@@ -14,6 +14,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <iterator>
 
 using std::cout;
 using std::endl;
@@ -32,10 +33,17 @@ class QueryResult
     friend ostream& print(ostream&, const QueryResult&);
 public:
     using lineno = vector<string>::size_type;
+    using lineit = set<lineno>::const_iterator;
     QueryResult(string s,
                 shared_ptr<set<lineno>> p,
                 shared_ptr<vector<string>> f):
     sought(s),lines(p),file(f) {};
+    
+    shared_ptr<vector<string>> get_file() const
+    {return file;}
+    
+    lineit begin() const {return lines->cbegin();}
+    lineit end() const {return lines->cend();}
     
 private:
     string sought; //查询单词
@@ -100,12 +108,107 @@ ostream &print(ostream & os, const QueryResult &qr)
 }
 
 
+class Query_base
+{
+    friend class Query;
+    
+protected:
+    using lineno = TextQuery::lineno;
+    virtual ~Query_base() = default;
+    
+private:
+    virtual QueryResult eval(const TextQuery&) const = 0;
+    virtual string rep() const = 0;
+};
+
+
+class Query
+{
+    friend Query operator~(const Query&);
+    friend Query operator|(const Query&, const Query&);
+    friend Query operator&(const Query&, const Query&);
+public:
+    Query(string&);
+    QueryResult eval(const TextQuery &t) const
+    {
+        return q->eval(t);
+    }
+    string rep() const
+    {
+        return q->rep();
+    }
+    
+private:
+    Query(std::shared_ptr<Query_base> query):q(query) {}
+    std::shared_ptr<Query_base> q;
+};
+
+
+class WordQuery:public Query_base
+{
+    friend class Query;  //friend 不能被继承
+    
+    WordQuery(const string &s): query_word(s){};
+    
+    QueryResult eval(const TextQuery &qr) const
+    {
+        return qr.query(query_word);
+    }
+    
+    string rep() const {return query_word;}
+    
+    string query_word;
+};
+
+
+class NotQuery: public Query_base
+{
+    friend Query operator~(const Query &);
+    NotQuery(const Query &q):query(q) {}
+    
+    string rep() const {return "~(" + query.rep() + ")";}
+    QueryResult eval(const TextQuery &qr) const;
+    Query query;
+};
+
+QueryResult
+NotQuery::eval(const TextQuery &text) const
+{
+    auto result = query.eval(text);
+    auto ret_lines = std::make_shared<set<lineno>>();
+    auto beg = result.begin(), end = result.end();
+    
+    auto sz = result.get_file()->size();
+    
+    for (size_t n = 0; n != sz; ++n) {
+        if (beg == end || *beg != n) {
+            ret_lines->insert(n);
+        }else if(beg != end){
+            ++beg;
+        }
+    }
+    
+    return QueryResult(rep(), ret_lines, result.get_file());
+}
+
+inline Query operator~(const Query &operand)
+{
+    return std::shared_ptr<Query_base>(new NotQuery(operand));
+}
+
+
+
 int main(int argc, const char * argv[]) {
     
-    ifstream file("/Users/liweijian/Code/c++/queryword/queryword/File");
+    ifstream file("/Users/liweijian/Code/leetcode/queryword/queryword/File");
     if (file.is_open()) {
         TextQuery tq(file);
-        print(cout, tq.query("she"));
+        //print(cout, tq.query("你好"));
+        
+        Query query("你好");
+        print(cout, query.eval());
+
+        
     }
    
     
