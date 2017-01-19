@@ -128,7 +128,7 @@ class Query
     friend Query operator|(const Query&, const Query&);
     friend Query operator&(const Query&, const Query&);
 public:
-    Query(string&);
+    Query(const string&);
     QueryResult eval(const TextQuery &t) const
     {
         return q->eval(t);
@@ -160,6 +160,8 @@ class WordQuery:public Query_base
     string query_word;
 };
 
+inline Query::Query(const std::string &s) : q(new WordQuery(s)) {}
+
 
 class NotQuery: public Query_base
 {
@@ -170,6 +172,12 @@ class NotQuery: public Query_base
     QueryResult eval(const TextQuery &qr) const;
     Query query;
 };
+
+inline Query operator~(const Query &operand)
+{
+    return std::shared_ptr<Query_base>(new NotQuery(operand));
+}
+
 
 QueryResult
 NotQuery::eval(const TextQuery &text) const
@@ -191,10 +199,6 @@ NotQuery::eval(const TextQuery &text) const
     return QueryResult(rep(), ret_lines, result.get_file());
 }
 
-inline Query operator~(const Query &operand)
-{
-    return std::shared_ptr<Query_base>(new NotQuery(operand));
-}
 
 
 
@@ -203,11 +207,14 @@ int main(int argc, const char * argv[]) {
     ifstream file("/Users/liweijian/Code/leetcode/queryword/queryword/File");
     if (file.is_open()) {
         TextQuery tq(file);
-        //print(cout, tq.query("你好"));
         
-        Query query("你好");
-        print(cout, query.eval());
-
+        print(cout, tq.query("你好"));
+        
+        Query query = ~Query("你好");
+        print(cout, query.eval(tq));
+        
+        Query query2 = ~(~Query("你好"));
+        print(cout, query2.eval(tq));
         
     }
    
