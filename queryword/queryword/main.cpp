@@ -201,6 +201,46 @@ NotQuery::eval(const TextQuery &text) const
 
 
 
+class BinaryQuery: public Query_base
+{
+protected:
+    BinaryQuery(const Query &l,  const Query &r, string s):lhs(l), rhs(r), opSym(s) {}
+    
+    string rep() const
+    {
+        return "(" + lhs.rep() + " " + opSym + " " + rhs.rep() + ")";
+    }
+    
+    Query lhs, rhs;
+    string opSym;
+};
+
+
+class AndQuery: public BinaryQuery
+{
+    friend Query operator&(const Query&, const Query&);
+    AndQuery(const Query &left, const Query &right):BinaryQuery(left, right, "&"){}
+    
+    QueryResult eval(const TextQuery&) const;
+};
+
+inline Query operator&(const Query &lhs, const Query &rhs)
+{
+    return std::shared_ptr<Query_base>(new AndQuery(lhs, rhs));
+}
+
+QueryResult
+AndQuery::eval(const TextQuery& text) const
+{
+    auto left = lhs.eval(text), right = rhs.eval(text);
+    auto ret_lines = std::make_shared<set<lineno>>();
+    
+    std::set_intersection(left.begin(), left.end(), right.begin(), right.end(),
+                          std::inserter(*ret_lines, ret_lines->begin()));
+    
+    return QueryResult(rep(), ret_lines, left.get_file());
+}
+
 
 int main(int argc, const char * argv[]) {
     
@@ -210,7 +250,7 @@ int main(int argc, const char * argv[]) {
         
         print(cout, tq.query("你好"));
         
-        Query query = ~Query("你好");
+        Query query = Query("你好")&Query("hi");
         print(cout, query.eval(tq));
         
         Query query2 = ~(~Query("你好"));
