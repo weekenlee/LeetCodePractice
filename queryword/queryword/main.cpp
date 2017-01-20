@@ -242,6 +242,30 @@ AndQuery::eval(const TextQuery& text) const
 }
 
 
+class OrQuery: public BinaryQuery
+{
+    friend Query operator|(const Query &lhs , const Query &rhs);
+    
+    OrQuery(const Query &lhs, const Query &rhs):BinaryQuery(lhs,rhs,"|"){}
+    
+    QueryResult eval(const TextQuery&) const;
+};
+
+inline Query operator|(const Query &lhs, const Query &rhs)
+{
+    return std::shared_ptr<Query_base>(new OrQuery(lhs, rhs));
+}
+
+QueryResult
+OrQuery::eval(const TextQuery& tq) const
+{
+    auto left = lhs.eval(tq), right = rhs.eval(tq);
+    auto ret_lines = std::make_shared<set<lineno>>(left.begin(),left.end());
+    ret_lines->insert(right.begin(), right.end());
+    return QueryResult(rep(), ret_lines, left.get_file());
+}
+
+
 int main(int argc, const char * argv[]) {
     
     ifstream file("/Users/liweijian/Code/leetcode/queryword/queryword/File");
@@ -250,7 +274,7 @@ int main(int argc, const char * argv[]) {
         
         print(cout, tq.query("你好"));
         
-        Query query = Query("你好")&Query("hi");
+        Query query = Query("she")|Query("你好")&Query("hi");
         print(cout, query.eval(tq));
         
         Query query2 = ~(~Query("你好"));
@@ -258,6 +282,5 @@ int main(int argc, const char * argv[]) {
         
     }
    
-    
     return 0;
 }
